@@ -1,5 +1,5 @@
 import { SignUpController } from './signup'
-import { InvalidParamError, MissingParamError } from '../errors'
+import { InvalidParamError, MissingParamError, ServerError } from '../errors'
 import { EmailValidator } from '../protocols'
 
 interface SutTypes {
@@ -7,14 +7,26 @@ interface SutTypes {
   emailValidatorStub: EmailValidator
 }
 
-const makeSut = (): SutTypes => {
+const makeEmailValidator = (): EmailValidator => {
   class EmailValidatorStub implements EmailValidator {
     isValid (email: string): boolean {
       return true
     }
   }
+  return new EmailValidatorStub()
+}
 
-  const emailValidatorStub = new EmailValidatorStub()
+const makeEmailValidatorWithError = (): EmailValidator => {
+  class EmailValidatorStub implements EmailValidator {
+    isValid (email: string): boolean {
+      throw new Error()
+    }
+  }
+  return new EmailValidatorStub()
+}
+
+const makeSut = (): SutTypes => {
+  const emailValidatorStub = makeEmailValidator()
   const sut = new SignUpController(emailValidatorStub)
   return {
     sut,
@@ -100,5 +112,38 @@ describe('SignUp Controller', () => {
     const httpResponse = await sut.handle(httpRequest)
     expect(httpResponse.statusCode).toBe(400)
     expect(httpResponse.body).toEqual(new InvalidParamError('email'))
+  })
+
+  test('Should call EmailValidator with correct email', async () => {
+    const { sut, emailValidatorStub } = makeSut()
+    const isValidSpy = jest.spyOn(emailValidatorStub, 'isValid')
+
+    const httpRequest = {
+      body: {
+        name,
+        email,
+        password,
+        passwordConfirmation
+      }
+    }
+    await sut.handle(httpRequest)
+    expect(isValidSpy).toHaveBeenCalledWith(email)
+  })
+
+  test('Should return 500 if EmailValidator throws', async () => {
+    const emailValidatorStub = makeEmailValidatorWithError()
+    const sut = new SignUpController(emailValidatorStub)
+
+    const httpRequest = {
+      body: {
+        name,
+        email,
+        password,
+        passwordConfirmation
+      }
+    }
+    const httpResponse = await sut.handle(httpRequest)
+    expect(httpResponse.statusCode).toBe(500)
+    expect(httpResponse.body).toEqual(new ServerError())
   })
 })
