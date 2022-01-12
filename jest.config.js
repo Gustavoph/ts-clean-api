@@ -6,5 +6,6 @@ module.exports = {
   clearMocks: true,
   transform: {
     '.+\\.ts$': 'ts-jest'
-  }
+  },
+  preset: '@shelf/jest-mongodb'
 }
