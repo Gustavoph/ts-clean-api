@@ -50,7 +50,7 @@ describe('DbAddAccount UseCase', () => {
       password: 'valid_password'
     }
     await sut.add(accountData)
-    expect(encryptSpy).toHaveBeenCalledWith(accountData.password)
+    expect(encryptSpy).toHaveBeenCalledWith('valid_password')
   })
 
   test('Should call AddAccountRepository with correct values', async () => {
